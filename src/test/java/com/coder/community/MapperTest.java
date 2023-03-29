@@ -1,11 +1,8 @@
 package com.coder.community;
 
-import com.coder.community.dao.DiscussPostMapper;
-import com.coder.community.dao.LoginTicketMapper;
-import com.coder.community.dao.UserMapper;
-import com.coder.community.entity.DiscussPost;
-import com.coder.community.entity.LoginTicket;
-import com.coder.community.entity.User;
+import com.coder.community.dao.*;
+import com.coder.community.entity.*;
+import com.coder.community.service.MessageService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -29,6 +27,12 @@ public class MapperTest {
 
     @Autowired
     private LoginTicketMapper loginTicketMapper;
+
+    @Autowired
+    private CommentMapper commentMapper;
+
+    @Autowired
+    private MessageMapper messageMapper;
 
     @Test
     public void testSelectUser(){
@@ -101,7 +105,34 @@ public class MapperTest {
         loginTicketMapper.updateStatus("abc",1);
         loginTicket = loginTicketMapper.selectByTicket("abc");
         System.out.println(loginTicket);
-
-
     }
+
+    @Test
+    public void testSelectComment(){
+        List<Comment> comments = new ArrayList<>();
+        comments = commentMapper.selectCommentByEntity(1,270,0,6);
+        System.out.println(comments);
+
+        int a = commentMapper.selectCountByEntity(2,12);
+        System.out.println(a);
+    }
+
+    @Test
+    public void testSelectMessage(){
+        List<Message> list = messageMapper.selectConversations(111,0,10);
+        System.out.println(list);
+
+        int a = messageMapper.selectConversationCount(111);
+        System.out.println(a);
+
+        list = messageMapper.selectLetters("111_112", 0, 10);
+        System.out.println(list);
+
+        a = messageMapper.selectLetterCount("111_112");
+        System.out.println(a);
+
+        a = messageMapper.selectLetterUnreadCount(111,null);
+        System.out.println(a);
+    }
+
 }
