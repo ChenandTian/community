@@ -8,7 +8,11 @@ import com.coder.community.service.UserService;
 import com.coder.community.util.CommunityConstant;
 import com.coder.community.util.CommunityUtil;
 import com.coder.community.util.HostHolder;
+import com.qiniu.util.Auth;
+import com.qiniu.util.StringMap;
 import org.apache.commons.lang3.StringUtils;
+
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
@@ -50,12 +55,53 @@ public class UserController implements CommunityConstant {
     @Autowired
     private FollowService followService;
 
+    @Value("${qiniu.key.access}")
+    private String accessKey;
+
+    @Value("${qiniu.key.secret}")
+    private String secretKey;
+
+    @Value("${qiniu.bucket.header.name}")
+    private String headerBucketKey;
+
+    @Value("${qiniu.bucket.header.url}")
+    private String headerBucketUrl;
+
     @LoginRequired
     @RequestMapping(path = "/setting", method = RequestMethod.GET)
-    public String getSettingPage(){
+    public String getSettingPage(Model model){
+        // 生成上传文件名称
+        String fileName = CommunityUtil.generateUUID();
+        // 设置响应信息
+        StringMap policy = new StringMap();
+        policy.put("returnBody", CommunityUtil.getJSONString(0));
+
+        // 生成上传凭证
+        Auth auth = Auth.create(accessKey, secretKey);
+        String uploadToken = auth.uploadToken(headerBucketKey, fileName, 3600,policy);
+
+        model.addAttribute("uploadToken",uploadToken);
+        model.addAttribute("fileName", fileName);
+
         return "/site/setting";
     }
 
+    //更新头像的路径
+    @RequestMapping(path = "/header/url", method = RequestMethod.POST)
+    @ResponseBody
+    public String updateHeaderUrl(String fileName) {
+        if(StringUtils.isBlank(fileName)) {
+            return CommunityUtil.getJSONString(1,"文件名不能为空！");
+        }
+
+        String url = headerBucketUrl + "/" + fileName;
+        userService.updateHeader(hostHolder.getUser().getId(), url);
+
+        return CommunityUtil.getJSONString(0);
+    }
+
+
+    // 废弃
     @LoginRequired
     @RequestMapping(path = "/upload", method = RequestMethod.POST)
     public String uploadHeader(MultipartFile headerImage, Model model) {
@@ -90,9 +136,37 @@ public class UserController implements CommunityConstant {
         String headerUrl = domain + contextPath + "/user/header/" + fileName;
         userService.updateHeader(user.getId(), headerUrl);
         //这里使用请求重定向不是使用请求转
+
         return "redirect:/index";
     }
+    @RequestMapping(path = "/update", method = RequestMethod.POST)
+    public String updatePassword(String oldPassword,String newPassword,String confirmPassword, Model model) {
+//        System.out.println("我在Controller中" + oldPassword + newPassword);
 
+        User user = hostHolder.getUser();
+        user = userService.findUserById(user.getId());
+        System.out.println(user);
+        oldPassword = CommunityUtil.md5(oldPassword + user.getSalt());
+        System.out.println(oldPassword);
+        if(!user.getPassword().equals(oldPassword)){
+            model.addAttribute("passwordError", "原密码输入错误！");
+            System.out.println("我又错了");
+            return "/site/setting";
+        }
+
+        if(newPassword != confirmPassword) {
+            model.addAttribute("ReError", "两次输入的密码不一致!");
+            return "/site/setting";
+        }
+       user.setPassword(CommunityUtil.md5(newPassword + user.getSalt()));
+
+       userService.updatePassword(user.getId(), user.getPassword());
+
+       return "redirect:/index";
+    }
+
+
+    // 废弃
     @RequestMapping(path = "/header/{fileName}", method = RequestMethod.GET)
     public void getHeader(@PathVariable("fileName") String fileName, HttpServletResponse response){
         //服务器存放路径

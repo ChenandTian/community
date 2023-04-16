@@ -76,7 +76,7 @@ public class MapperTest {
 
     @Test
     public void selectPosts(){
-        List<DiscussPost> list = discussPostMapper.selectDiscussPosts(149,0,10);
+        List<DiscussPost> list = discussPostMapper.selectDiscussPosts(149,0,10,0);
         for(DiscussPost post : list){
             System.out.println(post);
         }
@@ -135,4 +135,10 @@ public class MapperTest {
         System.out.println(a);
     }
 
+
+    @Test
+    public void testUpdatePassword() {
+        int rows = userMapper.updatePassword(112,"ccc");
+        System.out.println(rows);
+    }
 }
